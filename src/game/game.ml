@@ -1,5 +1,7 @@
 open Core
 
+module Tile = Tile
+
 type kind = Pawn | Knight | Bishop | Rook | Queen | King
 
 module Color = struct
@@ -12,51 +14,6 @@ module Color = struct
     | _ -> false
 
   let to_str = function White -> "White" | Black -> "Black"
-end
-
-module Moves = struct
-  type t = Tile.Coord.t list list
-  let get_moves (tile : Tile.Coord.t) kind (color : Color.t) = 
-    let moves = 
-      match kind with
-      | Pawn    -> let mult = match color with | White -> 1 | Black -> -1 in
-                    [List.append 
-                      [{ tile with y = tile.y + 1 * mult } ; { x = tile.x + 1 ; y = tile.y + 1 * mult } ; { x = tile.x - 1 ; y = tile.y + 1 * mult }]
-                      (if (tile.y = 1 && Color.equal color White) || (tile.y = 6 && Color.equal color Black)
-                      then [{ tile with y = tile.y + 2 * mult }] 
-                      else [])]
-
-      | Knight  -> [[ { x = tile.x - 2 ; y = tile.y + 1 } ; 
-                    { x = tile.x - 1 ; y = tile.y + 2 } ;
-                    { x = tile.x + 1 ; y = tile.y + 2 } ; 
-                    { x = tile.x + 2 ; y = tile.y + 1 } ; 
-                    { x = tile.x - 2 ; y = tile.y - 1 } ; 
-                    { x = tile.x - 1 ; y = tile.y - 2 } ;
-                    { x = tile.x + 1 ; y = tile.y - 2 } ; 
-                    { x = tile.x + 2 ; y = tile.y - 1 } ]]
-
-      | King    -> [[ { tile with x = tile.x + 1 } ; { tile with x = tile.x - 1 } ;  
-                    { tile with y = tile.y + 1 } ; { tile with y = tile.y - 1 } ; 
-                    { x = tile.x + 1 ; y = tile.y + 1 } ; { x = tile.x - 1 ; y = tile.x - 1 } ;
-                    { x = tile.x - 1 ; y = tile.y + 1 } ; { x = tile.x + 1 ; y = tile.y - 1 } ; 
-                    { tile with x = tile.x + 2 } ; { tile with x = tile.x - 2 }]]
-
-      | Bishop  -> [(List.init 7 ~f:(fun i -> Tile.{ x = tile.x + i + 1 ; y = tile.y + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x - i - 1 ; y = tile.y - i - 1 }))]
-
-      | Rook    -> [(List.init 7 ~f:(fun i -> { tile with x = tile.x + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> { tile with x = tile.x - i - 1 })) ;       
-                    (List.init 7 ~f:(fun i -> { tile with y = tile.y + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> { tile with y = tile.y - i - 1 }))]
-      
-      | Queen   -> [(List.init 7 ~f:(fun i -> { tile with x = tile.x + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> { tile with x = tile.x - i - 1 })) ;       
-                    (List.init 7 ~f:(fun i -> { tile with y = tile.y + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> { tile with y = tile.y - i - 1 })) ;
-                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x + i + 1 ; y = tile.y + i + 1 })) ;
-                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x - i - 1 ; y = tile.y - i - 1 }))]
-  in  
-  moves |> List.(map ~f:(filter ~f:Tile.Coord.in_board))
 end
 
 module State = struct
@@ -78,7 +35,6 @@ module State = struct
     curr_color  : Color.t
   }
 
- 
   let is_check gs color = 
     let moves = gs.moves in
     let ents = gs.ents in
@@ -146,7 +102,49 @@ module State = struct
           )
         ~finish:(fun _ -> true)
         ents
-  
+ 
+  let get_moves (tile : Tile.Coord.t) kind (color : Color.t) = 
+    let moves = 
+      match kind with
+      | Pawn    -> let mult = match color with | White -> 1 | Black -> -1 in
+                    [List.append 
+                      [{ tile with y = tile.y + 1 * mult } ; { x = tile.x + 1 ; y = tile.y + 1 * mult } ; { x = tile.x - 1 ; y = tile.y + 1 * mult }]
+                      (if (tile.y = 1 && Color.equal color White) || (tile.y = 6 && Color.equal color Black)
+                      then [{ tile with y = tile.y + 2 * mult }] 
+                      else [])]
+
+      | Knight  -> [[ { x = tile.x - 2 ; y = tile.y + 1 } ; 
+                    { x = tile.x - 1 ; y = tile.y + 2 } ;
+                    { x = tile.x + 1 ; y = tile.y + 2 } ; 
+                    { x = tile.x + 2 ; y = tile.y + 1 } ; 
+                    { x = tile.x - 2 ; y = tile.y - 1 } ; 
+                    { x = tile.x - 1 ; y = tile.y - 2 } ;
+                    { x = tile.x + 1 ; y = tile.y - 2 } ; 
+                    { x = tile.x + 2 ; y = tile.y - 1 } ]]
+
+      | King    -> [[ { tile with x = tile.x + 1 } ; { tile with x = tile.x - 1 } ;  
+                    { tile with y = tile.y + 1 } ; { tile with y = tile.y - 1 } ; 
+                    { x = tile.x + 1 ; y = tile.y + 1 } ; { x = tile.x - 1 ; y = tile.x - 1 } ;
+                    { x = tile.x - 1 ; y = tile.y + 1 } ; { x = tile.x + 1 ; y = tile.y - 1 } ; 
+                    { tile with x = tile.x + 2 } ; { tile with x = tile.x - 2 }]]
+
+      | Bishop  -> [(List.init 7 ~f:(fun i -> Tile.{ x = tile.x + i + 1 ; y = tile.y + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x - i - 1 ; y = tile.y - i - 1 }))]
+
+      | Rook    -> [(List.init 7 ~f:(fun i -> { tile with x = tile.x + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> { tile with x = tile.x - i - 1 })) ;       
+                    (List.init 7 ~f:(fun i -> { tile with y = tile.y + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> { tile with y = tile.y - i - 1 }))]
+      
+      | Queen   -> [(List.init 7 ~f:(fun i -> { tile with x = tile.x + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> { tile with x = tile.x - i - 1 })) ;       
+                    (List.init 7 ~f:(fun i -> { tile with y = tile.y + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> { tile with y = tile.y - i - 1 })) ;
+                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x + i + 1 ; y = tile.y + i + 1 })) ;
+                    (List.init 7 ~f:(fun i -> Tile.{ x = tile.x - i - 1 ; y = tile.y - i - 1 }))]
+  in  
+  moves |> List.(map ~f:(filter ~f:Tile.Coord.in_board))
+ 
   (* get all possible moves including king capture and putting yourself in check *)
   let pseudo_legal_moves src ents =  
     let eq = Tile.Coord.equal in
@@ -163,7 +161,7 @@ module State = struct
         | None -> aux (x::acc) xs)
     | [] -> acc
     in
-    let moves = Moves.get_moves src kind color in 
+    let moves = get_moves src kind color in 
     match kind with
     | Pawn -> List.(filter 
       ~f:(fun dest -> 
