@@ -60,10 +60,11 @@ module Moves = struct
 end
 
 module State = struct
+  type over = Checkmate | Stalemate
   type state_kind = 
   | Choose_ent  
   | Choose_move of Tile.Coord.t 
-  | Over of Color.t
+  | Over of over * Color.t
 
   type ent = { kind : kind ; color : Color.t ; has_moved : bool }
 
@@ -76,6 +77,7 @@ module State = struct
     state       : state_kind ; 
     curr_color  : Color.t
   }
+
  
   let is_check gs color = 
     let moves = gs.moves in
@@ -295,11 +297,16 @@ module State = struct
     | Choose_move coord' -> 
         if Tile.Coord.equal coord coord' then gs
         else
-          (match List.Assoc.find gs.ents coord ~equal:Tile.Coord.equal with
-          | Some ent ->
-              if Color.equal ent.color gs.curr_color then gs else make_move { src = coord' ; dest = coord } gs
-          | None -> make_move { src = coord' ; dest = coord } gs)
-    | Over _ -> gs
+          let gs = 
+            (match List.Assoc.find gs.ents coord ~equal:Tile.Coord.equal with
+            | Some ent ->
+                if Color.equal ent.color gs.curr_color then gs else make_move { src = coord' ; dest = coord } gs
+            | None -> make_move { src = coord' ; dest = coord } gs)
+          in
+          if is_mate gs gs.curr_color then { gs with state = Over (Checkmate, gs.curr_color) }
+          else if is_stalemate gs gs.curr_color then { gs with state = Over (Stalemate, gs.curr_color) }
+          else gs
+    | Over _ -> gs 
 
   let init = 
     let ents = [
