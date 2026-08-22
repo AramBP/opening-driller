@@ -1,0 +1,4 @@
+(executable
+ (name opening_driller)
+ (public_name opening-driller)
+ (libraries raylib core))
