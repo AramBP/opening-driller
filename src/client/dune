@@ -1,3 +1,8 @@
 (library 
   (name client)
+  (preprocess 
+    (pps ppx_blob))
+  (preprocessor_deps
+    (file ../../assets/fonts/Roboto-Bold.ttf)
+    (file ../../assets/fonts/Roboto-Regular.ttf))
   (libraries core raylib game))
