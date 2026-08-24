@@ -12,6 +12,7 @@ let rec loop (cs : Client.State.t) =
   match window_should_close () with
   | true  -> close_window ()
   | false -> 
+      let cs = Client.next cs in
       Raylib.begin_drawing ();
       Raylib.clear_background Color.black;
       Client.draw cs;
