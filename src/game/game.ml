@@ -106,7 +106,7 @@ let is_stalemate (gs : State.t) (color : Color.t) : bool =
 let get_moves (tile : Tile.Coord.t) (kind : kind) (color : Color.t) : Tile.Coord.t list list = 
   let moves = 
     match kind with
-    | Pawn    -> let mult = match color with | White -> 1 | Black -> -1 in
+    | Pawn    -> let mult = match color with | White -> -1 | Black -> 1 in
                   [List.append 
                     [{ tile with y = tile.y + 1 * mult } ; { x = tile.x + 1 ; y = tile.y + 1 * mult } ; { x = tile.x - 1 ; y = tile.y + 1 * mult }]
                     (if (tile.y = 1 && Color.equal color White) || (tile.y = 6 && Color.equal color Black)
@@ -170,7 +170,7 @@ let pseudo_legal_moves (src : Tile.Coord.t) (ents : (Tile.Coord.t, State.ent) Li
         | None -> 
             if Int.abs(src.y - dest.y) = 1 then true
             else
-              let dest = Tile.{ x = src.x ; y = src.y + (match color with White -> 1 | Black -> -1) } in
+              let dest = Tile.{ x = src.x ; y = src.y + (match color with White -> -1 | Black -> 1) } in
               Tile.Coord.in_board dest && not (List.Assoc.mem ents dest ~equal:eq) 
             )
         else 
@@ -192,7 +192,7 @@ let pseudo_legal_moves (src : Tile.Coord.t) (ents : (Tile.Coord.t, State.ent) Li
       | None -> true)
     else 
       (* Check for possible castle *)
-      let y = match color with White -> 0 | Black -> 7 in
+      let y = match color with White -> 7 | Black -> 0 in
       if dest.x = 2 && src.y = y && dest.y = y then
         List.Assoc.(not (mem ents { x = 1 ; y = y} ~equal:eq) && not (mem ents { x = 2 ; y = y } ~equal:eq) && not (mem ents { x = 3 ; y = y } ~equal:eq))
       else if dest.x = 6 && src.y = y && dest.y = y then
@@ -251,7 +251,7 @@ let make_move (move : move) (gs : State.t) : State.t =
               )
         | King -> 
           let x, mult = if dif_x < 0 then (0, 1) else (7, -1) in
-          let y = match curr_color with White -> 0 | Black -> 6 in
+          let y = match curr_color with White -> 7 | Black -> 0 in
           if dif_x = 0 || dif_x = 1 then move_ent src dest ent ents
           else if ent.has_moved || not (dest.y = y) then None
           else
@@ -306,38 +306,38 @@ let next (coord : Tile.Coord.t) (gs : State.t) =
 
 let init = 
   let ents = [
-    (Tile.{ x = 0 ; y = 0 }, State.{ kind = Rook ; color = Color.White ; has_moved = false }) ; 
-    (Tile.{ x = 7 ; y = 0 }, State.{ kind = Rook ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 1 ; y = 0 }, State.{ kind = Knight ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 6 ; y = 0 }, State.{ kind = Knight ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 2 ; y = 0 }, State.{ kind = Bishop ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 5 ; y = 0 }, State.{ kind = Bishop ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 3 ; y = 0 }, State.{ kind = Queen ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 4 ; y = 0 }, State.{ kind = King ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 0 ; y = 7 }, State.{ kind = Rook ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 7 ; y = 7 }, State.{ kind = Rook ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 1 ; y = 7 }, State.{ kind = Knight ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 6 ; y = 7 }, State.{ kind = Knight ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 2 ; y = 7 }, State.{ kind = Bishop ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 5 ; y = 7 }, State.{ kind = Bishop ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 3 ; y = 7 }, State.{ kind = Queen ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 4 ; y = 7 }, State.{ kind = King ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 0 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 7 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 1 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 6 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 2 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 5 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 3 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 4 ; y = 1 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
-    (Tile.{ x = 0 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 7 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 1 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 6 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 2 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 5 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 3 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
-    (Tile.{ x = 4 ; y = 6 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false })      
+    (Tile.{ x = 0 ; y = 7 }, State.{ kind = Rook ; color = Color.White ; has_moved = false }) ; 
+    (Tile.{ x = 7 ; y = 7 }, State.{ kind = Rook ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 1 ; y = 7 }, State.{ kind = Knight ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 6 ; y = 7 }, State.{ kind = Knight ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 2 ; y = 7 }, State.{ kind = Bishop ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 5 ; y = 7 }, State.{ kind = Bishop ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 3 ; y = 7 }, State.{ kind = Queen ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 4 ; y = 7 }, State.{ kind = King ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 0 ; y = 0 }, State.{ kind = Rook ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 7 ; y = 0 }, State.{ kind = Rook ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 1 ; y = 0 }, State.{ kind = Knight ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 6 ; y = 0 }, State.{ kind = Knight ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 2 ; y = 0 }, State.{ kind = Bishop ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 5 ; y = 0 }, State.{ kind = Bishop ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 3 ; y = 0 }, State.{ kind = Queen ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 4 ; y = 0 }, State.{ kind = King ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 0 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 7 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 1 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 6 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 2 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 5 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 3 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 4 ; y = 6 }, State.{ kind = Pawn ; color = Color.White ; has_moved = false }) ;
+    (Tile.{ x = 0 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 7 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 1 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 6 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 2 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 5 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 3 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false }) ;
+    (Tile.{ x = 4 ; y = 1 }, State.{ kind = Pawn ; color = Color.Black ; has_moved = false })      
   ]
   in
 
