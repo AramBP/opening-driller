@@ -131,7 +131,7 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
     let moves = List.Assoc.find_exn gs.moves tile ~equal:eq in    
     List.iter moves ~f:(fun coord -> 
       let x_px, y_px = Tile.Coord.to_pixel coord cs.layout in
-      draw_circle (x_px + lsx / 2) (y_px - lsy / 2) (Float.of_int (lsx / 8)) Helpers.transparent_dark_green
+      draw_circle (x_px + lsx / 2) (y_px + lsy / 2) (Float.of_int (lsx / 8)) Helpers.transparent_dark_green
     );
       
     let tex = Helpers.get_piece_tex ent in
@@ -142,7 +142,10 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
     | Drag_and_drop ->
         let mx, my = (get_mouse_x (), get_mouse_y ()) in
         let tile = Tile.Coord.of_pixel mx my cs.layout in
-        if List.mem moves tile ~equal:eq then draw_rectangle tile.x tile.y lsx lsy Helpers.transparent_dark_green;
+        if List.mem moves tile ~equal:eq then begin
+          let x_px, y_px = Tile.Coord.(to_pixel tile cs.layout) in
+          draw_rectangle x_px y_px lsx lsy Helpers.transparent_dark_green
+        end;
         draw_texture tex (mx - (Texture.width tex) / 2) (my - (Texture.height tex) / 2) Color.white
     
 let init =
