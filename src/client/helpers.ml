@@ -12,6 +12,43 @@ let load_font font_data =
 let font_regular = lazy (load_font [%blob "../../assets/fonts/Roboto-Regular.ttf"])
 let font_bold = lazy (load_font [%blob "../../assets/fonts/Roboto-Bold.ttf"])
 
+let load_i s = 
+  let im = Raylib.load_image_from_memory ".png" s (String.length s) in
+  let im_ptr = Ctypes.allocate Raylib.Image.t im in 
+  Raylib.(image_resize im_ptr 80 80);
+  Ctypes.(!@) im_ptr
+
+let load s = 
+  let im = load_i s in
+  let tex = Raylib.load_texture_from_image im in
+  Raylib.unload_image im;
+  tex
+
+let kingb = lazy (load [%blob "../../assets/pieces/Chess_kdt60.png"])
+let kingw = lazy (load [%blob "../../assets/pieces/Chess_klt60.png"])
+let queenb = lazy (load [%blob "../../assets/pieces/Chess_qdt60.png"])
+let queenw = lazy (load [%blob "../../assets/pieces/Chess_qlt60.png"])
+let bishopb = lazy (load [%blob "../../assets/pieces/Chess_bdt60.png"])
+let bishopw = lazy (load [%blob "../../assets/pieces/Chess_blt60.png"])
+let knightb = lazy (load [%blob "../../assets/pieces/Chess_ndt60.png"])
+let knightw = lazy (load [%blob "../../assets/pieces/Chess_nlt60.png"])
+let rookb = lazy (load [%blob "../../assets/pieces/Chess_rdt60.png"])
+let rookw = lazy (load [%blob "../../assets/pieces/Chess_rlt60.png"])
+let pawnb = lazy (load [%blob "../../assets/pieces/Chess_pdt60.png"])
+let pawnw = lazy (load [%blob "../../assets/pieces/Chess_plt60.png"]) 
+
+let get_piece_tex (ent : Game.State.ent) =
+  let lazy_tex = 
+    match ent.color, ent.kind with
+    | White, King -> kingw | Black, King -> kingb
+    | White, Queen -> queenw | Black, Queen -> queenb
+    | White, Bishop -> bishopw | Black, Bishop -> bishopb
+    | White, Knight -> knightw | Black, Knight -> knightb
+    | White, Rook -> rookw | Black, Rook -> rookb
+    | White, Pawn -> pawnw | Black, Pawn -> pawnb
+  in
+  Lazy.force lazy_tex
+
 let light_gray = Raylib.Color.create 51 49 46 255
 let gray = Raylib.Color.create 38 36 33 255
 let white_square = Raylib.Color.create 240 217 181 255 

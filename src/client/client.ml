@@ -12,18 +12,39 @@ module State = struct
   }
 end
 
+let get_tile (tile : Tile.Coord.t) (cs : State.t) : Tile.Coord.t =
+  let z = match cs.perspective with White -> 0 | Black -> 7 in
+  { x = abs (z - tile.x) ; y = abs (z - tile.y) }
+
+let select_tile (mx : int) (my : int) (cs : State.t) : unit =
+  let board_hover =
+    (cs.layout.origin.x + cs.layout.size.x * 8) >= mx && mx >= cs.layout.origin.x &&
+    (cs.layout.origin.y + cs.layout.size.y * 8) >= my && my >= cs.layout.origin.y
+  in
+  match board_hover with
+  | false -> ()
+  | true -> 
+      let tile = Tile.Coord.of_pixel (Float.of_int mx) (Float.of_int my) cs.layout in
+      let tile = get_tile tile cs in
+      Printf.printf "Clicked : (%d, %d) \n" tile.x tile.y; Out_channel.(flush stdout)
+       
 let next (cs : State.t) : State.t =
   let mx, my = Raylib.(get_mouse_x (), get_mouse_y ()) in
+
   let buttons = List.map cs.buttons ~f:(fun button -> Button.next mx my button) in
-  let res = 
-    match Raylib.(is_mouse_button_pressed MouseButton.Left) with 
+  let perspective = 
+    let res = match Raylib.(is_mouse_button_pressed MouseButton.Left) with 
     | true -> Button.on_click buttons (function Flip -> Game.Color.flip cs.perspective)
     | false -> None
+    in
+    match res with Some color -> color | None -> cs.perspective
   in
-  let perspective = match res with Some color -> color | None -> cs.perspective in
+  
+  if Raylib.(is_mouse_button_pressed MouseButton.Left) then select_tile mx my cs;
+
   { cs with perspective = perspective ; buttons = buttons }
 
-let draw (cs : State.t) : unit = 
+let draw (cs : State.t) (gs : Game.State.t) : unit = 
   let open Raylib in
 
   List.iter cs.buttons ~f:Button.draw;
@@ -42,19 +63,27 @@ let draw (cs : State.t) : unit =
         draw_text_ex
           (Lazy.force Helpers.font_bold)
           String.(get (Tile.Coord.to_string { x ; y }) 1 |> of_char)
-          (Vector2.create (x_px + lsx - 20 |> Float.of_int) (y_px + 10 |> Float.of_int))
-          24. 2. (Helpers.get_color !tile_color);
+          (Vector2.create (x_px + lsx - 15 |> Float.of_int) (y_px + 7 |> Float.of_int))
+          20. 2. (Helpers.get_color !tile_color);
       end;
       if y = 7 then begin
         let x = abs ((match cs.perspective with White -> 0 | Black -> 7) - x) in
         draw_text_ex
           (Lazy.force Helpers.font_bold)
           String.(get (Tile.Coord.to_string { x ; y }) 0 |> of_char)
-          (Vector2.create (x_px + 10 |> Float.of_int) (y_px + lsy - 30 |> Float.of_int))
-          24. 2. (Helpers.get_color !tile_color)
+          (Vector2.create (x_px + 5 |> Float.of_int) (y_px + lsy - 20 |> Float.of_int))
+          20. 2. (Helpers.get_color !tile_color)
       end;
     done;
-  done
+  done;
+
+  (* Draw pieces *)
+  List.iter gs.ents ~f:(fun (coord, ent) ->
+    let coord = get_tile coord cs in
+    let tex = Helpers.get_piece_tex ent in
+    let x, y = Tile.Coord.to_pixel coord cs.layout in
+    draw_texture tex x y Raylib.Color.white;
+  ) 
 
 let init =
   let flip_button = Button.create 800. 600. 100. 50. 0.5 "Flip" Center Helpers.gray Helpers.light_gray State.Flip in
