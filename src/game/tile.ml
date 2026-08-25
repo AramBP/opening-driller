@@ -8,8 +8,8 @@ module Coord = struct
   
   let of_pixel x y layout =
     {
-      x = Int.of_float (x -. Float.of_int layout.origin.x) / layout.size.x ; 
-      y = Int.of_float (y -. Float.of_int layout.origin.y) / layout.size.y 
+      x = (x - layout.origin.x) / layout.size.x ; 
+      y = (y - layout.origin.y) / layout.size.y 
     }
   
   (* [to_pixel coord layout] returns the the top most pixel (x, y) of the tile *)

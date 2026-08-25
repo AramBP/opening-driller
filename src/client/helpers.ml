@@ -53,6 +53,7 @@ let light_gray = Raylib.Color.create 51 49 46 255
 let gray = Raylib.Color.create 38 36 33 255
 let white_square = Raylib.Color.create 240 217 181 255 
 let black_square = Raylib.Color.create 181 136 99 255 
+let transparent_dark_green = Raylib.Color.(create (r darkgreen) (g darkgreen) (b darkgreen) 150)
 
 let get_color (color : Game.Color.t) : Raylib.Color.t =
   match color with White -> white_square | Black -> black_square

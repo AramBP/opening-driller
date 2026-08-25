@@ -61,7 +61,7 @@ let next (cs : State.t) (gs : Game.State.t) : State.t =
       in
       match Option.is_some tile_opt, Option.is_some cs.selected_tile with
       | true, true -> 
-        if Tile.Coord.equal (Option.value_exn tile_opt) (Option.value_exn cs.selected_tile) && not (is_mouse_button_down MouseButton.Left) then None
+        if Tile.Coord.equal (Option.value_exn tile_opt) (Option.value_exn cs.selected_tile) then None
         else tile_opt
       | true, false -> tile_opt
       | _ -> cs.selected_tile
@@ -70,7 +70,17 @@ let next (cs : State.t) (gs : Game.State.t) : State.t =
   let state, selected_tile =
     match is_mouse_button_down MouseButton.Left, Option.is_some selected_tile with
     | _, false -> State.Normal, selected_tile
-    | true, true -> Drag_and_drop, selected_tile
+    | true, true -> 
+        let state = (match cs.state with 
+        | Drag_and_drop -> State.Drag_and_drop
+        | Normal -> 
+            let mouse_not_moved = 
+              let mdelta = get_mouse_delta () in
+              Vector2.(Float.(x mdelta = 0. && y mdelta = 0.))
+            in
+            if mouse_not_moved then State.Normal else State.Drag_and_drop)
+        in
+        state, selected_tile
     | false, true -> 
       let tile_opt = select_tile mx my cs ~cond:Raylib.(is_mouse_button_released MouseButton.Left) in
       match tile_opt with 
@@ -126,14 +136,7 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
   match cs.selected_tile with
   | None -> ()
   | Some tile ->
-    let eq = Tile.Coord.equal in 
-    let ent = List.Assoc.find_exn gs.ents tile ~equal:eq in
-    let moves = List.Assoc.find_exn gs.moves tile ~equal:eq in    
-    List.iter moves ~f:(fun coord -> 
-      let x_px, y_px = Tile.Coord.to_pixel coord cs.layout in
-      draw_circle (x_px + lsx / 2) (y_px - lsy / 2) (Float.of_int (lsx / 8)) Helpers.transparent_dark_green
-    );
-      
+    let ent = List.Assoc.find_exn gs.ents tile ~equal:Tile.Coord.equal in
     let tex = Helpers.get_piece_tex ent in
     let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in 
     draw_rectangle x_px y_px lsx lsy Helpers.transparent_dark_green;
@@ -141,10 +144,8 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
     | Normal -> draw_texture tex x_px y_px Color.white
     | Drag_and_drop ->
         let mx, my = (get_mouse_x (), get_mouse_y ()) in
-        let tile = Tile.Coord.of_pixel mx my cs.layout in
-        if List.mem moves tile ~equal:eq then draw_rectangle tile.x tile.y lsx lsy Helpers.transparent_dark_green;
-        draw_texture tex (mx - (Texture.width tex) / 2) (my - (Texture.height tex) / 2) Color.white
-    
+        draw_texture tex (mx - 40) (my - 40) Color.white
+
 let init =
   let flip_button = Button.create 800. 600. 100. 50. 0.5 "Flip" Center Helpers.gray Helpers.light_gray State.Flip in
   State.{
