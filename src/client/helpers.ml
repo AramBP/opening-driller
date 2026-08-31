@@ -37,15 +37,15 @@ let rookw = lazy (load [%blob "../../assets/pieces/Chess_rlt60.png"])
 let pawnb = lazy (load [%blob "../../assets/pieces/Chess_pdt60.png"])
 let pawnw = lazy (load [%blob "../../assets/pieces/Chess_plt60.png"]) 
 
-let get_piece_tex (ent : Game.State.ent) =
+let get_piece_tex (piece : Game.piece) =
   let lazy_tex = 
-    match ent.color, ent.kind with
-    | White, King -> kingw | Black, King -> kingb
-    | White, Queen -> queenw | Black, Queen -> queenb
-    | White, Bishop -> bishopw | Black, Bishop -> bishopb
-    | White, Knight -> knightw | Black, Knight -> knightb
-    | White, Rook -> rookw | Black, Rook -> rookb
-    | White, Pawn -> pawnw | Black, Pawn -> pawnb
+    match piece with
+    | King, White -> kingw | King, Black -> kingb
+    | Queen, White -> queenw | Queen, Black -> queenb
+    | Bishop, White -> bishopw | Bishop, Black -> bishopb
+    | Knight, White -> knightw | Knight, Black -> knightb
+    | Rook, White -> rookw | Rook, Black -> rookb
+    | Pawn, White -> pawnw | Pawn, Black -> pawnb
   in
   Lazy.force lazy_tex
 
@@ -54,9 +54,6 @@ let gray = Raylib.Color.create 38 36 33 255
 let white_square = Raylib.Color.create 240 217 181 255 
 let black_square = Raylib.Color.create 181 136 99 255 
 let transparent_dark_green = Raylib.Color.(create (r darkgreen) (g darkgreen) (b darkgreen) 150)
-
-let get_color (color : Game.Color.t) : Raylib.Color.t =
-  match color with White -> white_square | Black -> black_square
 
 module Button = struct
   type state_kind = Hover | Idle

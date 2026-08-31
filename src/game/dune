@@ -1,3 +1,4 @@
 (library
  (name game)
+ (preprocess (pps ppx_deriving.eq))
  (libraries core))

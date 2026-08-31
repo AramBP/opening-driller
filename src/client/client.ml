@@ -1,7 +1,7 @@
 open Core
 
-module Tile = Game.Tile
 module Button = Helpers.Button
+type color = Game.color
 
 module State = struct
   type button_kind = Flip
@@ -11,7 +11,7 @@ module State = struct
     state           : state_kind ;
     layout          : Tile.layout ;
     buttons         : button_kind Button.t list ;
-    perspective     : Game.Color.t 
+    perspective     : color
   }
 end
 
@@ -29,7 +29,7 @@ let select_tile (mx : int) (my : int) (cs : State.t) ~(cond : bool) : Tile.Coord
   else
     None
        
-let next (cs : State.t) (gs : Game.State.t) : State.t =
+let next (cs : State.t) : State.t =
   let open Raylib in
   let mx, my = Raylib.(get_mouse_x (), get_mouse_y ()) in
   
@@ -42,45 +42,15 @@ let next (cs : State.t) (gs : Game.State.t) : State.t =
   let buttons = List.map cs.buttons ~f:(fun button -> Button.next mx my button) in
   let perspective = 
     let res = match is_mouse_button_pressed MouseButton.Left with 
-    | true -> Button.on_click buttons (function Flip -> Game.Color.flip cs.perspective)
+    | true -> Button.on_click buttons (function Flip -> Game.flip_color cs.perspective)
     | false -> None
     in
     match res with Some color -> color | None -> cs.perspective
   in
-  
-  let selected_tile = 
-    match cs.state with
-    | Drag_and_drop -> cs.selected_tile
-    | Normal ->
-      let tile_opt = match select_tile mx my cs ~cond:(is_mouse_button_pressed MouseButton.Left) with
-        | None -> None
-        | Some tile -> 
-            match List.Assoc.find gs.ents tile ~equal:Tile.Coord.equal with
-            | None -> None 
-            | Some ent -> if Game.Color.equal ent.color gs.curr_color then Some tile else None
-      in
-      match Option.is_some tile_opt, Option.is_some cs.selected_tile with
-      | true, true -> 
-        if Tile.Coord.equal (Option.value_exn tile_opt) (Option.value_exn cs.selected_tile) && not (is_mouse_button_down MouseButton.Left) then None
-        else tile_opt
-      | true, false -> tile_opt
-      | _ -> cs.selected_tile
-  in
 
-  let state, selected_tile =
-    match is_mouse_button_down MouseButton.Left, Option.is_some selected_tile with
-    | _, false -> State.Normal, selected_tile
-    | true, true -> Drag_and_drop, selected_tile
-    | false, true -> 
-      let tile_opt = select_tile mx my cs ~cond:Raylib.(is_mouse_button_released MouseButton.Left) in
-      match tile_opt with 
-      | Some tile ->  
-          if Tile.Coord.equal (Option.value_exn selected_tile) tile then State.Normal, selected_tile
-          else State.Normal, None
-      | None -> State.Normal, selected_tile
-  in
-  
-  { cs with perspective = perspective ; buttons = buttons ; selected_tile = selected_tile ; state = state }
+  let selected_tile = select_tile mx my cs ~cond:(is_mouse_button_pressed MouseButton.Left) in
+   
+  { cs with perspective = perspective ; buttons = buttons ; selected_tile = selected_tile}
 
 let draw (cs : State.t) (gs : Game.State.t) : unit = 
   let open Raylib in
@@ -89,20 +59,26 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
 
   (* Draw chess board *)
   let lsx, lsy = cs.layout.size.x, cs.layout.size.y in
-  let tile_color = ref Game.Color.Black in
+  let tile_color = ref Helpers.black_square in
+  let flip_tile_color color = Helpers.(
+    if color_is_equal color white_square then
+      black_square
+    else 
+      white_square)
+  in
   for x = 0 to 7 do
-    tile_color := Game.Color.flip !tile_color;
+    tile_color := flip_tile_color !tile_color;
     for y = 0 to 7 do
       let x_px, y_px = Tile.Coord.to_pixel { x ; y } cs.layout in
-      draw_rectangle x_px y_px lsx lsy (Helpers.get_color !tile_color);
-      tile_color := Game.Color.flip !tile_color;
+      draw_rectangle x_px y_px lsx lsy !tile_color;
+      tile_color := flip_tile_color !tile_color;
       if x = 7 then begin
         let y = abs ((match cs.perspective with White -> 7 | Black -> 0) - y) in
         draw_text_ex
           (Lazy.force Helpers.font_bold)
           String.(get (Tile.Coord.to_string { x ; y }) 1 |> of_char)
           (Vector2.create (x_px + lsx - 15 |> Float.of_int) (y_px + 7 |> Float.of_int))
-          20. 2. (Helpers.get_color !tile_color);
+          20. 2. !tile_color;
       end;
       if y = 7 then begin
         let x = abs ((match cs.perspective with White -> 0 | Black -> 7) - x) in
@@ -110,44 +86,24 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
           (Lazy.force Helpers.font_bold)
           String.(get (Tile.Coord.to_string { x ; y }) 0 |> of_char)
           (Vector2.create (x_px + 5 |> Float.of_int) (y_px + lsy - 20 |> Float.of_int))
-          20. 2. (Helpers.get_color !tile_color)
+          20. 2. !tile_color;
       end;
     done;
   done;
 
   (* Draw pieces *)
-  List.iter gs.ents ~f:(fun (coord, ent) ->
-    let coord = get_tile coord cs in
-    let tex = Helpers.get_piece_tex ent in
-    let x_px, y_px = Tile.Coord.to_pixel coord cs.layout in
-    draw_texture tex x_px y_px Color.white;
-  );
-  
-  match cs.selected_tile with
-  | None -> ()
-  | Some tile ->
-    let eq = Tile.Coord.equal in 
-    let ent = List.Assoc.find_exn gs.ents tile ~equal:eq in
-    let moves = List.Assoc.find_exn gs.moves tile ~equal:eq in    
-    List.iter moves ~f:(fun coord -> 
-      let x_px, y_px = Tile.Coord.to_pixel coord cs.layout in
-      draw_circle (x_px + lsx / 2) (y_px + lsy / 2) (Float.of_int (lsx / 8)) Helpers.transparent_dark_green
-    );
-      
-    let tex = Helpers.get_piece_tex ent in
-    let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in 
-    draw_rectangle x_px y_px lsx lsy Helpers.transparent_dark_green;
-    match cs.state with
-    | Normal -> draw_texture tex x_px y_px Color.white
-    | Drag_and_drop ->
-        let mx, my = (get_mouse_x (), get_mouse_y ()) in
-        let tile = Tile.Coord.of_pixel mx my cs.layout in
-        if List.mem moves tile ~equal:eq then begin
-          let x_px, y_px = Tile.Coord.(to_pixel tile cs.layout) in
-          draw_rectangle x_px y_px lsx lsy Helpers.transparent_dark_green
-        end;
-        draw_texture tex (mx - (Texture.width tex) / 2) (my - (Texture.height tex) / 2) Color.white
-    
+  Array.iteri gs.board ~f:(fun i piece_opt ->
+    match piece_opt with
+    | None -> ()
+    | Some piece ->
+      let coord = Tile.Coord.of_idx i in
+      let tile = get_tile coord cs in
+      let tex = Helpers.get_piece_tex piece in
+      let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in
+      draw_texture tex x_px y_px Color.white
+  )
+
+     
 let init =
   let flip_button = Button.create 800. 600. 100. 50. 0.5 "Flip" Center Helpers.gray Helpers.light_gray State.Flip in
   State.{
