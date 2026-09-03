@@ -4,6 +4,8 @@ type kind = Pawn | Knight | Bishop | Rook | Queen | King [@@deriving eq]
 type color = White | Black [@@deriving eq]
 type piece = kind * color [@@deriving eq]
 
+let flip_color = function White -> Black | Black -> White
+
 type t = piece option Array.t
 
 let get_piece (board : t) (idx : int) : piece option = board.(idx)
@@ -19,6 +21,7 @@ let find_piece (board : t) (piece : piece) : int option =
 let move_piece (board : t) (src : int) (dest : int) : t =
   match get_piece board src with 
   | None -> board
+  | Some _ when src = dest -> Array.set board src None; board
   | Some piece -> Array.(set board src None; set board dest (Some piece)); board
 
 let to_string (board : t) : string =

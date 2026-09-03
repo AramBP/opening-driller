@@ -23,8 +23,8 @@ let is_legal y dx dy = function
   | Rook, _ -> dx = 0 || dy = 0
   | Knight, _ -> (abs dx = 2 && abs dy = 1) || (abs dx = 1 && abs dy = 2)
   | Bishop, _ -> abs dx = abs dy 
-  | Pawn, White -> (y < 8 && abs dx <= 1 && dy = -1)
-  | Pawn, Black -> (y > 1 && abs dx <= 1 && dy = 1)
+  | Pawn, Black -> (y < 8 && abs dx <= 1 && dy = -1)
+  | Pawn, White -> (y > 1 && abs dx <= 1 && dy = 1)
 
 let moves = 
   let tuplef_eq (a, b) (c, d) = Float.equal a c && Float.equal b d in

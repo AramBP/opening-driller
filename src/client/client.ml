@@ -48,7 +48,12 @@ let next (cs : State.t) : State.t =
     match res with Some color -> color | None -> cs.perspective
   in
 
-  let selected_tile = select_tile mx my cs ~cond:(is_mouse_button_pressed MouseButton.Left) in
+  let selected_tile = 
+    if is_mouse_button_pressed MouseButton.Left then 
+      select_tile mx my cs ~cond:(true)
+    else
+      cs.selected_tile
+  in
    
   { cs with perspective = perspective ; buttons = buttons ; selected_tile = selected_tile}
 
@@ -101,8 +106,27 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
       let tex = Helpers.get_piece_tex piece in
       let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in
       draw_texture tex x_px y_px Color.white
-  )
+  );
 
+  let moves = Game.all_moves gs cs.perspective in 
+  
+  List.iter moves ~f:(fun idx -> 
+    let tile = Tile.Coord.of_idx idx in
+    let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in
+    draw_circle (x_px + cs.layout.size.x/2) (y_px + cs.layout.size.y/2) (Float.of_int (cs.layout.size.x) *. 0.25) Helpers.transparent_dark_green
+  );
+
+  match cs.selected_tile with
+  | None -> ()
+  | Some tile -> 
+      let idx = Tile.Coord.to_idx (get_tile tile cs) in
+      match Game.get_piece gs idx gs.player with
+      | None -> ()
+      | Some piece ->
+          let tex = Helpers.get_piece_tex piece in
+          let x_px, y_px = Tile.Coord.to_pixel tile cs.layout in
+          draw_rectangle x_px y_px cs.layout.size.x cs.layout.size.y Helpers.transparent_dark_green;
+          draw_texture tex x_px y_px Color.white
      
 let init =
   let flip_button = Button.create 800. 600. 100. 50. 0.5 "Flip" Center Helpers.gray Helpers.light_gray State.Flip in

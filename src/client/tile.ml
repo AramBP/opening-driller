@@ -1,10 +1,8 @@
-type vec2 = { x : int ; y : int }
+type vec2 = { x : int ; y : int } [@@deriving eq]
 type layout = { origin : vec2 ; size : vec2 }
 
 module Coord = struct
   type t = vec2
-
-  let equal a b = Int.equal a.x b.x && Int.equal a.y b.y
   
   let of_pixel x y layout =
     {
@@ -19,6 +17,8 @@ module Coord = struct
     let file = idx mod 8 in
     let row = idx / 8 in
     { x = file ; y = row }
+
+  let to_idx (coord : t) : int = coord.x + coord.y * 8 
 
   let to_string coord =
     let file = match coord.x with 0 -> "a" | 1 -> "b" | 2 -> "c" | 3 -> "d" | 4 -> "e" | 5 -> "f" | 6 -> "g" | 7 -> "h" | x -> Int.to_string x in
