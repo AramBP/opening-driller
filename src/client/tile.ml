@@ -18,7 +18,7 @@ module Coord = struct
     let row = idx / 8 in
     { x = file ; y = row }
 
-  let to_idx (coord : t) : int = coord.x + coord.y * 8 
+  let to_idx (coord : t) : int = coord.x + coord.y * 8
 
   let to_string coord =
     let file = match coord.x with 0 -> "a" | 1 -> "b" | 2 -> "c" | 3 -> "d" | 4 -> "e" | 5 -> "f" | 6 -> "g" | 7 -> "h" | x -> Int.to_string x in

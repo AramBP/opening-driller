@@ -49,9 +49,9 @@ let coord_to_idx (coord : string) : int =
 let idx_to_coord (idx : int) : string =
   let file = idx mod 8 in
   let row = idx / 8 in
-  let rank = Char.of_int_exn (Char.to_int 'a' + file) in
-  let row_char = Char.of_int_exn (Char.to_int '0' + row) in
-  String.of_char_list [rank; row_char]
+  let file_char = Char.of_int_exn (Char.to_int 'a' + file) in
+  let rank = 8 - row in
+  (String.of_char file_char) ^ (Int.to_string rank)
 
 let apply_move (gs : State.t) (src : int) (dest : int) : State.t = 
   match Board.get_piece gs.board src with

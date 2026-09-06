@@ -21,8 +21,12 @@ let find_piece (board : t) (piece : piece) : int option =
 let move_piece (board : t) (src : int) (dest : int) : t =
   match get_piece board src with 
   | None -> board
-  | Some _ when src = dest -> Array.set board src None; board
-  | Some piece -> Array.(set board src None; set board dest (Some piece)); board
+  | Some _ when src = dest -> board
+  | Some piece -> 
+      let new_board = Array.copy board in
+      Array.set new_board src None;
+      Array.set new_board dest (Some piece);
+      new_board
 
 let to_string (board : t) : string =
   let piece_to_str = function
