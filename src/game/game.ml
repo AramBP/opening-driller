@@ -119,9 +119,9 @@ let apply_move (gs : State.t) (src : int) (dest : int) : State.t =
         let is_en_passant = (match gs.en_passant with None -> false | Some x -> dest = x) in
         if Board.equal_kind kind Pawn && is_en_passant then
           if Board.equal_color color White then
-            Board.move_piece board (dest - 8) (dest - 8)
-          else
             Board.move_piece board (dest + 8) (dest + 8)
+          else
+            Board.move_piece board (dest - 8) (dest - 8)
         else
           board
       in
