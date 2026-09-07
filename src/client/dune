@@ -1,7 +1,7 @@
 (library 
   (name client)
   (preprocess 
-    (pps ppx_blob))
+    (pps ppx_blob ppx_deriving.eq))
   (preprocessor_deps
     (file ../../assets/fonts/Roboto-Bold.ttf)
     (file ../../assets/fonts/Roboto-Regular.ttf)
