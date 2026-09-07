@@ -60,19 +60,19 @@ let apply_move (gs : State.t) (src : int) (dest : int) : State.t =
       let kind, color = piece in
       (* Update castling rights *)
       let white_king = 
-        if gs.rights.white_king then not (Board.equal_piece piece (King, White)) && not (src = 7)
+        if gs.rights.white_king then not (Board.equal_piece piece (King, White)) && not (src = 63) && not (dest = 63)
         else false
       in
       let white_queen = 
-        if gs.rights.white_queen then not (Board.equal_piece piece (King, White)) && not (src = 0)
+        if gs.rights.white_queen then not (Board.equal_piece piece (King, White)) && not (src = 56) && not (dest = 56)
         else false
       in
       let black_king = 
-        if gs.rights.black_king then not (Board.equal_piece piece (King, Black)) && not (src = 63)
+        if gs.rights.black_king then not (Board.equal_piece piece (King, Black)) && not (src = 7) && not (dest = 7)
         else false
       in
       let black_queen = 
-        if gs.rights.black_queen then not (Board.equal_piece piece (King, Black)) && not (src = 56)
+        if gs.rights.black_queen then not (Board.equal_piece piece (King, Black)) && not (src = 0) && not (dest = 0)
         else false
       in
 
@@ -96,21 +96,17 @@ let apply_move (gs : State.t) (src : int) (dest : int) : State.t =
       let board = Board.move_piece gs.board src dest in
 
       (* move rook to other side in case of castle *)
-      let castle_type = 
-        if dest = 62 then white_king
-        else if dest = 58 then white_queen
-        else if dest = 6 then black_king
-        else if dest = 2 then black_queen
-        else false
+      let is_castle_move = 
+        Board.equal_kind kind King && abs (src - dest) = 2 
       in
 
       let board = 
-        if Board.equal_kind kind King && castle_type then
+        if Board.equal_kind kind King && is_castle_move then
           let rook_src, rook_dest = 
             if dest = 62 then 63, 61
             else if dest = 58 then 56, 59
             else if dest = 6 then 7, 5
-            else if dest = 2 then 56, 59
+            else if dest = 2 then 0, 3
             else raise (InvalidCastle ("From " ^ idx_to_coord src ^ " to " ^ idx_to_coord dest))
           in
           Board.move_piece board rook_src rook_dest
@@ -176,7 +172,7 @@ let trace_ray (gs : State.t) (src : int) (ray : int list) (player : color) : int
                 Some [x]
           (*Test for castling exception king *)
           | King, _ when del_x = 2 -> 
-              let gap = src + x / 2 in
+              let gap = (src + x) / 2 in
               let out = x - 1 in
               let rights = 
                 if x = 62 then gs.rights.white_king 
@@ -252,7 +248,7 @@ let of_string (fen_string : string) : State.t =
   if not (Array.length fen_arr = 6) then failwith on_fail;
 
   let board = Board.of_string fen_arr.(0) in
-  Printf.printf "%s\n" (Board.to_string board); Out_channel.(flush stdout);
+
   let player = 
     match fen_arr.(1) with 
     | "w" -> Board.White | "b" -> Board.Black 

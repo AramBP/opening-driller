@@ -61,12 +61,12 @@ let moves =
       let legal_moves = Array.filter legal_moves ~f:(function [] -> false | _ -> true) in 
       
       (* Add castling for kings *)
-      if idx = 4 && equal_piece (King, White) piece then begin
+      if idx = 4 && equal_piece (King, Black) piece then begin
         legal_moves.(0) <- (6::(legal_moves.(0)));
         legal_moves.(4) <- (2::(legal_moves.(4)))
       end;
       
-      if idx = 60 && equal_piece(King, Black) piece then begin
+      if idx = 60 && equal_piece(King, White) piece then begin
         legal_moves.(0) <- (62::(legal_moves.(0)));
         legal_moves.(4) <- (58::(legal_moves.(4)))
       end;
