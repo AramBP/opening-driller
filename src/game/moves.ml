@@ -19,7 +19,7 @@ let rays = List.map directions ~f:normalize
 
 let is_legal y dx dy = function
   | King, _ -> abs dx <= 1 && abs dy <= 1
-  | Queen, _ -> dx = 0 || dy = 0 || dx = dy
+  | Queen, _ -> dx = 0 || dy = 0 || abs dx = abs dy
   | Rook, _ -> dx = 0 || dy = 0
   | Knight, _ -> (abs dx = 2 && abs dy = 1) || (abs dx = 1 && abs dy = 2)
   | Bishop, _ -> abs dx = abs dy 
