@@ -116,3 +116,86 @@ module Button = struct
         | Hover -> Stop (Some (fn button.mode))
         | Idle -> Continue acc)
 end
+
+module type ScrollItem = sig
+  type content
+  type t = { content : content ; width : int ; height : int}
+  val draw : t -> int -> int -> unit
+end
+
+module ScrollableBox (Item : ScrollItem) = struct 
+  type t = {
+    pos_x : int ;
+    pos_y : int ; (* Position of the top left corner of the box *)
+    items : Item.t List.t ;
+    render_tex : Raylib.RenderTexture.t ;
+    background_color : Raylib.Color.t ;
+    scroll : float ; (* Specifies the scroll position in the box : 0.0 -> top of the box and 1.0 -> bottom of the box*)
+    bottom_line : int ;
+    top_line : int
+  }
+
+  let get_dim (scroll_box : t) =
+    let tex = Raylib.RenderTexture.texture scroll_box.render_tex in
+    Raylib.Texture.(width tex, height tex)
+
+  let add_item (scroll_box : t) (item : Item.t) : t =
+    {scroll_box with items = List.append scroll_box.items [item] }
+    
+  let update (scroll_box : t) : t =
+    let clamp x mi ma = Float.(max mi (min ma x)) in
+    let mx, my = Raylib.(get_mouse_x (), get_mouse_y ()) in
+    let width, height = get_dim scroll_box in
+    
+    let hover =
+      scroll_box.pos_x + width >= mx && mx >= scroll_box.pos_x &&
+      scroll_box.pos_y + height >= my && my >= scroll_box.pos_y
+    in
+    
+    let total_height =
+      List.fold_left scroll_box.items ~init:0 ~f:(fun acc item ->
+          acc + item.Item.height)
+    in  
+
+    let max_scroll = max 0 (total_height - height) in
+    let px_step = 30.0 in
+    let scroll =
+      if hover && max_scroll > 0 then
+        let wheel = Raylib.get_mouse_wheel_move () in
+        let current_px = scroll_box.scroll *. Float.of_int max_scroll in
+        let new_px = clamp (current_px -. (wheel *. px_step)) 0.0 (Float.of_int max_scroll) in
+        new_px /. Float.of_int max_scroll
+      else
+        scroll_box.scroll
+    in
+    let top_line = Float.to_int (scroll *. Float.of_int max_scroll) in
+    let bottom_line = top_line + height in
+    { scroll_box with scroll ; top_line ; bottom_line }
+
+
+  let draw (scroll_box : t) : unit =
+    let open Raylib in
+    let width, height = get_dim scroll_box in
+    begin_texture_mode scroll_box.render_tex;
+    clear_background scroll_box.background_color;
+    
+    let y_offset = ref 0 in
+    List.iter scroll_box.items ~f:(fun item ->
+      let item_top = !y_offset in
+      let item_bottom = !y_offset + item.height in
+      if item_bottom >= scroll_box.top_line && item_top <= scroll_box.bottom_line then
+        Item.draw item 0 (item_top - scroll_box.top_line);
+      y_offset := item_bottom
+    );
+    end_texture_mode ();
+
+    draw_texture_rec
+      (RenderTexture.texture scroll_box.render_tex)
+      (Rectangle.create 0.0 0.0 (Float.of_int width) (-1. *. Float.of_int height))
+      (Vector2.create (Float.of_int scroll_box.pos_x) (Float.of_int scroll_box.pos_y))
+      Color.white
+
+  let init (pos_x : int) (pos_y : int) (width : int) (height : int) (background_color : Raylib.Color.t): t =
+    let render_tex = Raylib.load_render_texture width height in
+    { pos_x = pos_x ; pos_y = pos_y ; items = [] ; render_tex = render_tex ; background_color = background_color ; scroll = 0.0 ; bottom_line = 0 ; top_line = 0 }
+end

@@ -1,7 +1,29 @@
 open Core
 
 module Button = Helpers.Button
+module type ScrollItem = Helpers.ScrollItem
+module ScrollableBox = Helpers.ScrollableBox
 type color = Game.color
+
+module MoveItem : sig
+  include ScrollItem
+  val make : string  -> int -> int -> t
+end = struct
+  type content = { label : string ; color : Raylib.Color.t }
+  type t = { content : content ; width : int ; height : int }
+
+  let draw (item : t) (x : int) (y : int) : unit =
+    let open Raylib in
+    draw_rectangle x y item.width item.height Color.black;
+    draw_rectangle_lines x y item.width item.height Color.white;
+    draw_text item.content.label (x + 8) (y + 8) 10 item.content.color
+
+  let make (label : string) (width : int) (height : int) : t =
+    let color = Raylib.Color.white in
+    let content = { label ; color } in
+    { content = content ; width = width ; height = height}
+end
+module MoveHist = ScrollableBox (MoveItem)
 
 module Input = struct
   type t = 
@@ -17,9 +39,14 @@ module State = struct
     input           : Input.t ;
     layout          : Tile.layout ;
     buttons         : button_kind Button.t list ;
-    perspective     : color
+    perspective     : color ;
+    move_history    : MoveHist.t
   }
 end
+
+let create_move_item (gs : Game.State.t) (src : int) (dest : int) : MoveItem.t =
+  let label = Int.to_string (gs.n_moves) ^ " : " ^ Int.to_string src ^ " -> " ^ Int.to_string dest in
+  MoveItem.make label 240 60 
 
 let board_hover (mx : int) (my : int) (cs : State.t) =
   (cs.layout.origin.x + cs.layout.size.x * 8) >= mx && mx >= cs.layout.origin.x &&
@@ -88,7 +115,8 @@ let next (cs : State.t) (gs : Game.State.t) : (State.t * Game.State.t) =
 
   let input = get_input cs cs.input in
 
-  let gs = 
+  (* Update the game state and if there is a valid move the move history as well *)
+  let gs, move_history = 
     match input with
     | Move (src, dest) ->
         let src_idx = Tile.Coord.to_idx (get_tile src cs) in
@@ -96,15 +124,18 @@ let next (cs : State.t) (gs : Game.State.t) : (State.t * Game.State.t) =
         if Option.is_some (Game.get_piece gs src_idx gs.player) then 
           let moves = Game.get_moves gs src_idx gs.player in
           if List.mem moves dest_idx ~equal:Int.equal then
-            Game.apply_move gs src_idx dest_idx
+            let move_item = create_move_item gs src_idx dest_idx in
+            Game.apply_move gs src_idx dest_idx, (MoveHist.add_item cs.move_history move_item)
           else
-            gs
+            gs, cs.move_history
         else
-          gs
-    | _ -> gs
+          gs, cs.move_history
+    | _ -> gs, cs.move_history
   in 
+
+  let move_history = MoveHist.update move_history in
    
-  { cs with perspective = perspective ; buttons = buttons ; input = input }, gs
+  { cs with perspective = perspective ; buttons = buttons ; input = input ; move_history = move_history }, gs
 
 let draw (cs : State.t) (gs : Game.State.t) : unit = 
   let open Raylib in
@@ -157,7 +188,7 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
       draw_texture tex x_px y_px Color.white
   );
  
-  match cs.input with
+  (match cs.input with
     | Empty | Move _ -> ()
     | Normal tile -> 
         let idx = Tile.Coord.to_idx (get_tile tile cs) in
@@ -196,13 +227,18 @@ let draw (cs : State.t) (gs : Game.State.t) : unit =
               else 
                 draw_circle (x_px + cs.layout.size.x/2) (y_px + cs.layout.size.y/2) (Float.of_int (cs.layout.size.x) *. 0.15) Helpers.transparent_dark_green
             );
-            draw_texture tex (mx - Texture.width tex / 2) (my - Texture.height tex / 2) Color.white
+            draw_texture tex (mx - Texture.width tex / 2) (my - Texture.height tex / 2) Color.white);
+
+    (* Draw move history *)
+    MoveHist.draw (cs.move_history)
        
-let init =
+let init () =
   let flip_button = Button.create 800. 600. 100. 50. 0.5 "Flip" Center Helpers.gray Helpers.light_gray State.Flip in
+  let move_history = MoveHist.init 800 20 280 400 Raylib.Color.white in
   State.{
     input = Empty ;
     layout        = Tile.{ size = { x = 80 ; y = 80 } ; origin = { x = 40 ; y = 40 } } ;
     perspective   = White ;
-    buttons       = [flip_button]
+    buttons       = [flip_button] ;
+    move_history  = move_history
   }

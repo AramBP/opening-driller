@@ -5,7 +5,7 @@ let setup () =
   let window_name = "Opening Trainer" in
   init_window window_width window_height window_name;
   set_target_fps 60;
-  Client.init, Game.init
+  Client.init (), Game.init
 
 let rec loop (cs, gs : Client.State.t * Game.State.t) =
   let open Raylib in
