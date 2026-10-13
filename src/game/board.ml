@@ -26,16 +26,16 @@ let move_piece (board : t) (src : int) (dest : int) : t =
       Array.set new_board dest (Some piece);
       Array.set new_board src None;
       new_board
-
-let to_string (board : t) : string =
-  let piece_to_str = function
+      
+let piece_to_str = function
     | Pawn, White -> "P" | Pawn, Black -> "p"
     | Knight, White -> "N" | Knight, Black -> "n"
     | Bishop, White -> "B" | Bishop, Black -> "b"
     | Rook, White -> "R" | Rook, Black -> "r"
     | Queen, White -> "Q" | Queen, Black -> "q"
     | King, White -> "K" | King, Black -> "k"
-  in
+
+let to_string (board : t) : string =
   let n_empty, res =
     Array.foldi board ~init:(0, "") ~f:(fun idx (n_empty, res) piece_opt ->
       (* starting a new rank: flush the previous rank's trailing empties, add '/' *)

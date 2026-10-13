@@ -9,7 +9,7 @@ let flip_color = Board.(function White -> Black | Black -> White)
 type piece = Board.piece
 
 module State = struct
-  type status = Check | Checkmate | Stalemate
+  type status = Check | Checkmate | Stalemate | Normal
   type castling_rights = { white_king : bool ; white_queen : bool ; black_king : bool ; black_queen : bool }
   type state_kind = { player : Board.color ; }
   type t = { 
@@ -18,7 +18,8 @@ module State = struct
     rights : castling_rights ; 
     en_passant : int option ;  
     n_half_moves : int ;
-    n_moves : int
+    n_moves : int ;
+    status : status
   }
 end
 
@@ -134,9 +135,10 @@ let apply_move (gs : State.t) (src : int) (dest : int) : State.t =
         n_moves = n_moves ; 
         n_half_moves = n_half_moves ; 
         en_passant = en_passant ; 
-        rights = { white_king ; white_queen ; black_king ; black_queen } 
+        rights = { white_king ; white_queen ; black_king ; black_queen } ;
+        status = gs.status
       }
-  
+ 
 let trace_ray (gs : State.t) (src : int) (ray : int list) (player : color) : int list =
   match get_piece gs src player with
   | None -> raise (EmptySquare (idx_to_coord src))
@@ -203,6 +205,12 @@ let all_moves_piece (gs : State.t) (idx : int) (player : color) : int list =
 (* Get a list containing all reachables moves for pieces owned by the specified player *)
 let all_moves (gs : State.t) (player : color) : int list = List.(init 64 ~f:(fun src -> all_moves_piece gs src player) |> join)
 
+let is_check (gs : State.t) (color : color) : bool =
+  let opponent = Board.flip_color color in
+  let moves_opponent = all_moves gs opponent in
+  let king_loc = Option.value_exn (Board.find_piece gs.board (King, color)) in
+  List.mem moves_opponent king_loc ~equal:Int.equal
+
 (* Get a list containing all legal moves for the piece at the specified index *)
 let get_moves (gs : State.t) (src : int) (player : color) : int list = 
   match get_piece gs src player with
@@ -232,14 +240,120 @@ let get_moves (gs : State.t) (src : int) (player : color) : int list =
         in
         if legal_castle then
           let test_board = apply_move gs src dest in 
-          let moves_opponent = all_moves test_board opponent in
-          let king_loc = Option.value_exn (Board.find_piece test_board.board (King, player)) in
-          if List.mem moves_opponent king_loc ~equal:Int.equal then Continue acc
+          if is_check test_board player then Continue acc
           else Continue (dest::acc)
         else
           Continue acc
       )
-    
+
+let legal_moves (gs : State.t) (color : color) : int list =
+  Array.foldi gs.board ~init:[] ~f:(fun i acc -> function
+        | None -> acc
+        | Some (_, color') -> 
+            if Board.equal_color color color' then 
+              List.append acc (get_moves gs i color)
+            else
+              acc
+        )
+
+let is_mate (gs : State.t) (color : color) : bool =
+  if is_check gs color then
+    List.is_empty (legal_moves gs color)
+  else
+    false
+
+let is_stalemate (gs : State.t) (color : color) : bool =
+  if not (is_mate gs color) then
+    List.is_empty (legal_moves gs color) 
+  else
+    false
+ 
+let move_to_string (gs : State.t) (src : int) (dest : int) : string =
+  let coord = idx_to_coord src in
+  match Board.get_piece gs.board src with 
+  | None -> raise (EmptySquare (coord))
+  | Some (kind, color) ->
+      let dx = abs (src mod 8) - (dest mod 8) in 
+      let kind_str = 
+        let s = Board.piece_to_str (kind, Board.White) in 
+        if String.equal s "P" then "" else s
+      in 
+
+      if String.equal kind_str "K" && dx = 2 then
+        "0-0"
+      else if String.equal kind_str "K" && dx = 3 then
+        "0-0-0"
+      else 
+        let captures = 
+          match get_owner gs dest with 
+          | None -> ""
+          | Some _ -> "x"
+        in 
+        let next_gs = apply_move gs src dest in
+        let status_indicator = 
+          match next_gs.status with
+          | Checkmate -> "#"
+          | Check -> "+"
+          | _ -> ""
+        in
+        let specify_src indices =
+          match kind with
+            | Queen | Rook | Knight ->
+              List.fold_until indices ~init:false ~finish:(fun acc -> acc) ~f:(fun acc idx ->
+                match get_piece gs idx color with
+                | None -> Continue acc
+                | Some piece ->
+                    if Board.equal_piece (kind, color) piece then
+                      let moves = get_moves gs idx color in 
+                      if List.mem moves dest ~equal:Int.equal then
+                        Stop true
+                      else
+                        Continue acc
+                    else
+                      Continue acc
+              )
+            | _ -> false
+        in
+        let rank = src mod 8 in
+        let row = src / 8 in
+        let indices_rank = List.init 8 ~f:(fun i -> rank + 8*i) in  
+        let indices_row = List.init 8 ~f:(fun i -> row*8 + i) in
+        let specify_rank = 
+          if specify_src indices_rank then
+            (String.get coord 0 |> Char.to_string)
+          else
+            ""
+        in
+        let specify_row = 
+          if specify_src indices_row then
+            (String.get coord 1 |> Char.to_string)
+          else
+            ""
+        in
+
+        let coord_dest = idx_to_coord dest in
+        
+        match kind with
+        | Pawn -> 
+          let src_rank = (String.get coord 0 |> Char.to_string) in
+          (src_rank ^ captures ^ coord_dest ^ status_indicator)
+        | _ ->
+          (kind_str ^ specify_rank ^ specify_row ^ captures ^ coord_dest ^ status_indicator)
+
+
+
+let update_status (gs : State.t) : State.t = 
+  let status =
+    if is_stalemate gs gs.player then
+      State.Stalemate
+    else if is_mate gs gs.player then
+      State.Checkmate
+    else if is_check gs gs.player then
+      State.Check
+    else
+      State.Normal
+  in
+  { gs with status = status }
 
 let of_string (fen_string : string) : State.t =
   let on_fail = "Failed to parse FEN encoded string : \n"^ fen_string in
@@ -277,7 +391,9 @@ let of_string (fen_string : string) : State.t =
     | None -> failwith on_fail
   in
   
-  { board ; player ; rights ; en_passant ; n_half_moves ; n_moves }
+  let status = State.Normal in
+  let gs = State.{ board ; player ; rights ; en_passant ; n_half_moves ; n_moves ; status } in
+  update_status gs
 
 let to_string (gs : State.t) : string =
   let board_str = Board.to_string gs.board in
