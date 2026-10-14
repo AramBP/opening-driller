@@ -140,7 +140,7 @@ module ScrollableBox (Item : ScrollItem) = struct
     Raylib.Texture.(width tex, height tex)
 
   let add_item (scroll_box : t) (item : Item.t) : t =
-    {scroll_box with items = List.append scroll_box.items [item] }
+    { scroll_box with items = List.append scroll_box.items [item] }
     
   let update (scroll_box : t) : t =
     let clamp x mi ma = Float.(max mi (min ma x)) in
@@ -171,7 +171,6 @@ module ScrollableBox (Item : ScrollItem) = struct
     let top_line = Float.to_int (scroll *. Float.of_int max_scroll) in
     let bottom_line = top_line + height in
     { scroll_box with scroll ; top_line ; bottom_line }
-
 
   let draw (scroll_box : t) : unit =
     let open Raylib in

@@ -268,6 +268,22 @@ let is_stalemate (gs : State.t) (color : color) : bool =
   else
     false
  
+let update_status (gs : State.t) : State.t = 
+  let status =
+    if is_stalemate gs gs.player then
+      State.Stalemate
+    else if is_mate gs gs.player then
+      State.Checkmate
+    else if is_check gs gs.player then
+      State.Check
+    else
+      State.Normal
+  in
+  { gs with status = status }
+
+let next_state (gs : State.t) (src : int) (dest : int) : State.t =
+  update_status (apply_move gs src dest)
+
 let move_to_string (gs : State.t) (src : int) (dest : int) : string =
   let coord = idx_to_coord src in
   match Board.get_piece gs.board src with 
@@ -289,7 +305,7 @@ let move_to_string (gs : State.t) (src : int) (dest : int) : string =
           | None -> ""
           | Some _ -> "x"
         in 
-        let next_gs = apply_move gs src dest in
+        let next_gs = next_state gs src dest in
         let status_indicator = 
           match next_gs.status with
           | Checkmate -> "#"
@@ -303,7 +319,7 @@ let move_to_string (gs : State.t) (src : int) (dest : int) : string =
                 match get_piece gs idx color with
                 | None -> Continue acc
                 | Some piece ->
-                    if Board.equal_piece (kind, color) piece then
+                    if Board.equal_piece (kind, color) piece && not (idx = src) then
                       let moves = get_moves gs idx color in 
                       if List.mem moves dest ~equal:Int.equal then
                         Stop true
@@ -335,25 +351,10 @@ let move_to_string (gs : State.t) (src : int) (dest : int) : string =
         
         match kind with
         | Pawn -> 
-          let src_rank = (String.get coord 0 |> Char.to_string) in
+          let src_rank = if String.equal captures "x" then (String.get coord 0 |> Char.to_string) else "" in
           (src_rank ^ captures ^ coord_dest ^ status_indicator)
         | _ ->
           (kind_str ^ specify_rank ^ specify_row ^ captures ^ coord_dest ^ status_indicator)
-
-
-
-let update_status (gs : State.t) : State.t = 
-  let status =
-    if is_stalemate gs gs.player then
-      State.Stalemate
-    else if is_mate gs gs.player then
-      State.Checkmate
-    else if is_check gs gs.player then
-      State.Check
-    else
-      State.Normal
-  in
-  { gs with status = status }
 
 let of_string (fen_string : string) : State.t =
   let on_fail = "Failed to parse FEN encoded string : \n"^ fen_string in

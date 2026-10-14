@@ -45,8 +45,8 @@ module State = struct
 end
 
 let create_move_item (gs : Game.State.t) (src : int) (dest : int) : MoveItem.t =
-  let label = Int.to_string (gs.n_moves) ^ " : " ^ Int.to_string src ^ " -> " ^ Int.to_string dest in
-  MoveItem.make label 240 60 
+  let label = Game.move_to_string gs src dest in  
+  MoveItem.make label 240 30
 
 let board_hover (mx : int) (my : int) (cs : State.t) =
   (cs.layout.origin.x + cs.layout.size.x * 8) >= mx && mx >= cs.layout.origin.x &&
@@ -124,8 +124,9 @@ let next (cs : State.t) (gs : Game.State.t) : (State.t * Game.State.t) =
         if Option.is_some (Game.get_piece gs src_idx gs.player) then 
           let moves = Game.get_moves gs src_idx gs.player in
           if List.mem moves dest_idx ~equal:Int.equal then
+            let next_gs = Game.next_state gs src_idx dest_idx in
             let move_item = create_move_item gs src_idx dest_idx in
-            Game.apply_move gs src_idx dest_idx, (MoveHist.add_item cs.move_history move_item)
+            next_gs, (MoveHist.add_item cs.move_history move_item)
           else
             gs, cs.move_history
         else
